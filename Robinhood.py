@@ -136,7 +136,7 @@ class Robinhood:
 
     def print_quote_data(self, stock=None):
         data = self.quote_data(stock)
-        if data:
+        if "last_trade_price" in data:
             change = float(data["last_trade_price"]) - float(data["previous_close"]);
             percentChange = round(100 * change / float(data["previous_close"]), 3);
             print("{}: ${} | ${} ({}%)".format(data["symbol"], data["last_trade_price"], change, percentChange));

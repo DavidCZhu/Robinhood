@@ -49,7 +49,7 @@ class Robinhood:
 
     def __init__(self):
         self.session = requests.session()
-        self.session.proxies = urllib.request.getproxies()
+        self.session.proxies = urllib.getproxies()
         self.headers = {
             "Accept": "*/*",
             "Accept-Encoding": "gzip, deflate",
@@ -81,7 +81,7 @@ class Robinhood:
         return True
 
     ##############################
-    #GET DATA 
+    #GET DATA
     ##############################
 
     def investment_profile(self):
@@ -96,16 +96,17 @@ class Robinhood:
         #Prompt for stock if not entered
         if stock is None:
             stock = raw_input("Symbol: ");
+        stock = stock.upper();
         url = str(self.endpoints['quotes']) + str(stock) + "/"
         #Check for validity of symbol
         try:
-            res = json.loads((urllib.request.urlopen(url)).read().decode('utf-8'));
+            res = json.loads((urllib.urlopen(url)).read().decode('utf-8'));
             if len(res) > 0:
                 return res;
             else:
-                raise NameError("Invalid Symbol: " + stock);
+                return None;
         except (ValueError):
-            raise NameError("Invalid Symbol: " + stock);
+            return None;
 
     def get_quote(self, stock=None):
         data = self.quote_data(stock)
@@ -119,18 +120,47 @@ class Robinhood:
         # bounds can be 'regular' for regular hours or 'extended' for extended hours
         res = self.session.get(self.endpoints['historicals'], params={'symbols':','.join(symbol).upper(), 'interval':interval, 'span':span, 'bounds':bounds})
         return res.json()
-        
+
     def get_news(self, symbol):
         return self.session.get(self.endpoints['news']+symbol.upper()+"/").json()
-        
+
 
     def print_quote(self, stock=None):
         data = self.quote_data(stock)
-        print(data["symbol"] + ": $" + data["last_trade_price"]);
+        if data:
+            change = float(data["last_trade_price"]) - float(data["previous_close"]);
+            percentChange = round(100 * change / float(data["previous_close"]), 3);
+            print("{}: ${} | ${} ({}%)".format(data["symbol"], data["last_trade_price"], change, percentChange));
+        else:
+            print("{} symbol not found".format(stock));
+
+    def print_quote_data(self, stock=None):
+        data = self.quote_data(stock)
+        if data:
+            change = float(data["last_trade_price"]) - float(data["previous_close"]);
+            percentChange = round(100 * change / float(data["previous_close"]), 3);
+            print("{}: ${} | ${} ({}%)".format(data["symbol"], data["last_trade_price"], change, percentChange));
+
+            if data["last_extended_hours_trade_price"] != None:
+                changeAH = float(data["last_extended_hours_trade_price"]) - float(data["last_trade_price"]);
+                percentChangeAH = round(100 * changeAH / float(data["last_trade_price"]), 3);
+                print("  After hours: ${} | ${} ({}%)".format(data["last_extended_hours_trade_price"], changeAH, percentChangeAH));
+
+            # print("  Bid ${} ({})".format(data["ask_price"], data["ask_size"]));
+            # print("  Ask ${} ({})".format(data["bid_price"], data["bid_size"]));
+            print("  Yesterday's close ${}".format(data["previous_close"]));
+            if (data["trading_halted"]):
+                print("  Trading halted ")
+        else:
+            print("{} symbol not found".format(stock));
 
     def print_quotes(self, stocks):
         for i in range(len(stocks)):
-            self.print_quote(stocks[i]);
+            self.print_quote(stocks[i].strip());
+
+    def print_quotes_data(self, stocks):
+        for i in range(len(stocks)):
+            self.print_quote_data(stocks[i].strip());
 
     def ask_price(self, stock=None):
         return self.quote_data(stock)['ask_price'];
@@ -161,12 +191,12 @@ class Robinhood:
 
     def last_updated_at(self, stock=None):
         return self.quote_data(stock)['updated_at'];
-    
+
     def get_account(self):
         res = self.session.get(self.endpoints['accounts'])
         res = res.json()
         return res['results'][0]
-        
+
     def get_url(self,url):
         return self.session.get(url).json()
 
@@ -204,10 +234,10 @@ class Robinhood:
 
     def market_value(self):
         return float(self.portfolios()['market_value'])
-        
+
     def order_history(self):
         return self.session.get(self.endpoints['orders']).json()
-        
+
     def dividends(self):
         return self.session.get(self.endpoints['dividends']).json()
 
@@ -239,21 +269,27 @@ class Robinhood:
     def place_order(self, instrument, quantity=1, bid_price = None, transaction=None):
         if bid_price == None:
             bid_price = self.quote_data(instrument['symbol'])['bid_price']
-        data = 'account=%s&instrument=%s&price=%f&quantity=%d&side=%s&symbol=%s&time_in_force=gfd&trigger=immediate&type=market' % (
+        data = 'account=%s&instrument=%s&price=%f&quantity=%d&side=%s&symbol=%s&time_in_force=gfd&trigger=immediate&type=limit' % (
             self.get_account()['url'],
             urllib.unquote(instrument['url']),
             float(bid_price),
             quantity,
             transaction,
             instrument['symbol']
-        ) 
+        )
         res = self.session.post(self.endpoints['orders'], data=data)
+        res = res.json()
+        return res
+
+    def cancel_order(self, orderId):
+        data = 'account=%s' % self.get_account()['url']
+        url = '%s/%s/cancel/' % (self.endpoints['orders'], orderId)
+        res = self.session.post(url, data=data)
+        res = res.json()
         return res
 
     def place_buy_order(self, instrument, quantity, bid_price=None):
-        transaction = "buy"
-        return self.place_order(instrument, quantity, bid_price, transaction)
+        return self.place_order(instrument, quantity, bid_price, "buy")
 
     def place_sell_order(self, instrument, quantity, bid_price=None):
-        transaction = "sell"
-        return self.place_order(instrument, quantity, bid_price, transaction)
+        return self.place_order(instrument, quantity, bid_price, "sell")

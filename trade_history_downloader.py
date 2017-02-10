@@ -45,8 +45,8 @@ def get_all_history_orders(rb_client):
 
 
 rb = Robinhood()
-# !!!!!! change the username and passs, be careful when paste the code to public 
-rb.login(username="name", password="pass")
+rb.login_prompt()
+
 past_orders = get_all_history_orders(rb)
 instruments_db = shelve.open('instruments.db')
 orders = [order_item_info(order, rb, instruments_db) for order in past_orders]

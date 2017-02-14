@@ -68,7 +68,7 @@ sell_count = {}
 buys = []
 buy_count = {}
 
-yesterday = datetime.datetime.today().replace(tzinfo=None) - datetime.timedelta(days=1);
+yesterday = datetime.datetime.today().replace(tzinfo=None) - datetime.timedelta(hours=16);
 
 for order in orders:
     order_date = dateutil.parser.parse(order['date']).replace(tzinfo=None);
@@ -80,7 +80,7 @@ for order in orders:
 
                 key = order['symbol']
                 if key in sell_count:
-                    print sell_count[key]
+                    sell_count[key] = sell_count[key] + float(order['shares'])
                 else:
                     sell_count[key] = float(order['shares'])
 

@@ -58,9 +58,9 @@ rb = Robinhood()
 rb.login_prompt();
 instruments_db = {}
 
-first_page = get_first_page(rb);
+page = get_first_page(rb);
 
-orders = [order_item_info(order, rb, instruments_db) for order in first_page['results']]
+orders = [order_item_info(order, rb, instruments_db) for order in page['results']]
 
 sells = []
 sell_count = {}
@@ -112,7 +112,7 @@ while (sell_count != buy_count):
                             buy_count[key] = float(order['shares']);
 
     # get new orders
-    page = get_next_history_page(rb, first_page['next'])
+    page = get_next_history_page(rb, page['next'])
     orders = [order_item_info(order, rb, instruments_db) for order in page['results']]
 
 

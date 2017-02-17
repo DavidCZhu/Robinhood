@@ -84,23 +84,38 @@ for order in orders:
                 else:
                     sell_count[key] = float(order['shares'])
 
-for order in orders:
-    if order['side'] == 'buy' and float(order['shares']) > 0:
-        key = order['symbol']
 
-        if key in sell_count:
-            n_sold = sell_count[key]
-            n_bought = 0;
-            if key in buy_count:
-                n_bought = buy_count[key];
+while (sell_count != buy_count):
+    for order in orders:
+        if order['side'] == 'buy' and float(order['shares']) > 0:
+            key = order['symbol']
 
-            if n_bought < n_sold:
-                if n_bought + float(order['shares']) <= n_sold:
-                    buys.append(order);
-                    if key in buy_count:
-                        buy_count[key] = n_bought + float(order['shares'])
+            if key in sell_count:
+                n_sold = sell_count[key]
+                n_bought = 0;
+                if key in buy_count:
+                    n_bought = buy_count[key];
+
+                if n_bought < n_sold:
+                    if n_bought + float(order['shares']) <= n_sold:
+                        buys.append(order);
+                        if key in buy_count:
+                            buy_count[key] = n_bought + float(order['shares'])
+                        else:
+                            buy_count[key] = float(order['shares']);
                     else:
-                        buy_count[key] = float(order['shares']);
+                        order['shares'] = n_bought - n_sold
+                        buys.append(order);
+                        if key in buy_count:
+                            buy_count[key] = n_bought + float(order['shares'])
+                        else:
+                            buy_count[key] = float(order['shares']);
+
+    # get new orders
+    page = get_next_history_page(rb, first_page['next'])
+    orders = [order_item_info(order, rb, instruments_db) for order in page['results']]
+
+
 
 
 total_buy = 0

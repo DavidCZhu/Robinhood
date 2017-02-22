@@ -64,6 +64,7 @@ orders = [order_item_info(order, rb, instruments_db) for order in page['results'
 
 sells = []
 sell_count = {}
+sell_date = {}
 
 buys = []
 buy_count = {}
@@ -71,7 +72,7 @@ buy_count = {}
 yesterday = datetime.datetime.today().replace(tzinfo=None) - datetime.timedelta(hours=16);
 
 for order in orders:
-    order_date = dateutil.parser.parse(order['date']).replace(tzinfo=None);
+    order_date = dateutil.parser.parse(order['date']).replace(tzinfo=None)
 
     if yesterday < order_date:
         if float(order['shares']) > 0:
@@ -84,13 +85,22 @@ for order in orders:
                 else:
                     sell_count[key] = float(order['shares'])
 
+                if key not in sell_date:
+                    sell_date[key] = order_date;
+                    
 
 while (sell_count != buy_count):
     for order in orders:
+        buy_date = dateutil.parser.parse(order['date']).replace(tzinfo=None)
+
         if order['side'] == 'buy' and float(order['shares']) > 0:
             key = order['symbol']
 
             if key in sell_count:
+
+                if buy_date > sell_date[key]:
+                    continue
+
                 n_sold = sell_count[key]
                 n_bought = 0;
                 if key in buy_count:
@@ -104,7 +114,7 @@ while (sell_count != buy_count):
                         else:
                             buy_count[key] = float(order['shares']);
                     else:
-                        order['shares'] = n_bought - n_sold
+                        order['shares'] = n_sold - n_bought
                         buys.append(order);
                         if key in buy_count:
                             buy_count[key] = n_bought + float(order['shares'])
@@ -114,8 +124,6 @@ while (sell_count != buy_count):
     # get new orders
     page = get_next_history_page(rb, page['next'])
     orders = [order_item_info(order, rb, instruments_db) for order in page['results']]
-
-
 
 
 total_buy = 0

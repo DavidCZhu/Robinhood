@@ -57,50 +57,61 @@ def get_next_history_page(rb_client, next_url):
 rb = Robinhood()
 rb.login_prompt();
 instruments_db = {}
-ticker = raw_input('Which stock ticker?: ')
 
 past_orders = get_all_history_orders(rb)
 orders = [order_item_info(order, rb, instruments_db) for order in past_orders]
 
-sells = []
-sell_count = 0
+while True:
+    ticker = raw_input('Which stock ticker?: ').upper()
 
-buys = []
-buy_count = 0
+    sells = []
+    sell_count = 0
 
-for order in orders:
-    order_date = dateutil.parser.parse(order['date']).replace(tzinfo=None)
+    buys = []
+    buy_count = 0
 
-    if float(order['shares']) > 0 and order['symbol'] == ticker:
-        if order['side'] == 'sell':
-            sells.append(order)
-            sell_count = sell_count + float(order['shares'])
-        else:
-            buys.append(order)
-            buy_count = buy_count + float(order['shares'])
-        
-total_buy = 0
-total_sell = 0
+    for order in orders:
+        order_date = dateutil.parser.parse(order['date']).replace(tzinfo=None)
 
-print "======"
+        if float(order['shares']) > 0 and order['symbol'] == ticker:
+            if order['side'] == 'sell':
+                sells.append(order)
+                sell_count = sell_count + float(order['shares'])
+            else:
+                buys.append(order)
+                buy_count = buy_count + float(order['shares'])
+            
+    total_buy = 0
+    shares_traded = 0
+    total_sell = 0
 
-print "BOUGHT"
-print "======"
-for buy in buys:
-    price = float(buy['price']) * float(buy['shares'])
-    print "{} : #{} @ ${} .. ${}".format(buy['symbol'], buy['shares'], buy['price'], price)
-    total_buy = total_buy + price
-print "======"
-print "SOLD"
-print "======"
-for sell in sells:
-    price = float(sell['price']) * float(sell['shares'])
-    print "{} : #{} @ ${} .. ${}".format(sell['symbol'], sell['shares'], sell['price'], price)
-    total_sell = total_sell + price
+    print "======"
+    print "BOUGHT"
+    print "======"
+    for buy in buys:
+        price = float(buy['price']) * float(buy['shares'])
+        print "{} : #{} @ ${} .. ${}".format(buy['symbol'], buy['shares'], buy['price'], price)
+        total_buy = total_buy + price
+    print "======"
+    print "SOLD"
+    print "======"
+    for sell in sells:
+        price = float(sell['price']) * float(sell['shares'])
+        print "{} : #{} @ ${} .. ${}".format(sell['symbol'], sell['shares'], sell['price'], price)
+        total_sell = total_sell + price
+        shares_traded = shares_traded + float(sell['shares'])
 
-print "total winnings:"
-print total_sell - total_buy
+    print "total value moved: ${}".format(total_sell + total_buy)
+    print "total winnings: ${}".format(total_sell - total_buy)
+    print "shares traded: {}".format(shares_traded)
 
+    if (buy_count - sell_count > 0):
+        print "outstanding shares: {}".format(buy_count - sell_count)
 
-print "outstanding shares:"
-print buy_count - sell_count
+        last_price = rb.quote_data(ticker)['last_trade_price']
+
+        current_value = (buy_count - sell_count) * float(last_price);
+
+        print "current value: ${}".format(current_value)
+
+        print "adjusted winnings: ${}".format(total_sell - total_buy + current_value)
